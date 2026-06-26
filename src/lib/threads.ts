@@ -21,19 +21,27 @@ export interface Thread {
 
 const KEY = "travel-copilot.threads.v1";
 
+let cache: Thread[] = [];
+let cacheRaw: string | null = null;
+
 function read(): Thread[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return cache;
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Thread[]) : [];
+    if (raw === cacheRaw) return cache;
+    cacheRaw = raw;
+    cache = raw ? (JSON.parse(raw) as Thread[]) : [];
+    return cache;
   } catch {
-    return [];
+    return cache;
   }
 }
 
 function write(threads: Thread[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(KEY, JSON.stringify(threads));
+  cache = threads;
+  cacheRaw = JSON.stringify(threads);
+  localStorage.setItem(KEY, cacheRaw);
   listeners.forEach((l) => l());
 }
 
