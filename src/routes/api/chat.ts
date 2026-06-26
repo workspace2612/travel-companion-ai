@@ -21,7 +21,7 @@ Use a tool whenever the user's request maps to one; otherwise answer conversatio
 After a tool returns, summarize the result for the user in a clear, well-formatted markdown reply.
 Currency defaults to INR; origin defaults to the user's city if they mention one.
 Ask brief follow-ups when key inputs are missing.
-Flight search, hotel search, and PDF/URL scraping are temporarily unavailable — tell the user politely if they ask.`;
+PDF/URL scraping for PDFs is temporarily unavailable — tell the user politely if they upload a PDF.`;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
