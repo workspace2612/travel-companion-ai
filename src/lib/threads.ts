@@ -58,8 +58,9 @@ function subscribe(l: () => void) {
   };
 }
 
+const EMPTY: Thread[] = [];
 export function useThreads(): Thread[] {
-  return useSyncExternalStore(subscribe, read, () => []);
+  return useSyncExternalStore(subscribe, read, () => EMPTY);
 }
 
 export function useThread(id: string | undefined): Thread | null {
