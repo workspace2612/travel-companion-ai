@@ -8,6 +8,12 @@ import {
 } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import {
+  amadeusConfigured,
+  searchFlights,
+  searchFlightsFlex,
+  searchHotels,
+} from "@/lib/amadeus.server";
 
 const SYSTEM = `You are AI Travel Copilot — a friendly, expert travel planner.
 You have tools for destination discovery, budget optimization, itinerary analysis, and full trip generation.
@@ -15,7 +21,7 @@ Use a tool whenever the user's request maps to one; otherwise answer conversatio
 After a tool returns, summarize the result for the user in a clear, well-formatted markdown reply.
 Currency defaults to INR; origin defaults to the user's city if they mention one.
 Ask brief follow-ups when key inputs are missing.
-Flight search, hotel search, and PDF/URL scraping are temporarily unavailable — tell the user politely if they ask.`;
+PDF/URL scraping for PDFs is temporarily unavailable — tell the user politely if they upload a PDF.`;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -177,34 +183,66 @@ Return JSON of shape:
     }),
 
     search_flights: tool({
-      description: "Search real flights between two IATA airports on a given date.",
+      description: "Search real flights between two IATA airports on a given date (Amadeus).",
       inputSchema: z.object({
         origin_iata: z.string(),
         destination_iata: z.string(),
         date: z.string(),
+        adults: z.number().int().default(1),
       }),
-      execute: async (args) => record("search_flights", args, NOT_CONFIGURED),
+      execute: async (args) => {
+        if (!amadeusConfigured()) return record("search_flights", args, NOT_CONFIGURED);
+        try {
+          const result = await searchFlights(args);
+          return record("search_flights", args, result);
+        } catch (e) {
+          return record("search_flights", args, {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      },
     }),
 
     search_flights_flex: tool({
-      description: "Find the cheapest day to fly within a flex window around a target date.",
+      description: "Find the cheapest day to fly within a flex window around a target date (Amadeus).",
       inputSchema: z.object({
         origin_iata: z.string(),
         destination_iata: z.string(),
         date: z.string(),
         flex_days: z.number().int().default(3),
       }),
-      execute: async (args) => record("search_flights_flex", args, NOT_CONFIGURED),
+      execute: async (args) => {
+        if (!amadeusConfigured()) return record("search_flights_flex", args, NOT_CONFIGURED);
+        try {
+          const result = await searchFlightsFlex(args);
+          return record("search_flights_flex", args, result);
+        } catch (e) {
+          return record("search_flights_flex", args, {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      },
     }),
 
     search_hotels: tool({
-      description: "Search hotels for an IATA city code between check-in and check-out.",
+      description: "Search hotels for an IATA city code between check-in and check-out (Amadeus).",
       inputSchema: z.object({
         city_code: z.string(),
         check_in: z.string(),
         check_out: z.string(),
+        adults: z.number().int().default(1),
       }),
-      execute: async (args) => record("search_hotels", args, NOT_CONFIGURED),
+      execute: async (args) => {
+        if (!amadeusConfigured()) return record("search_hotels", args, NOT_CONFIGURED);
+        try {
+          const result = await searchHotels(args);
+          return record("search_hotels", args, result);
+        } catch (e) {
+          return record("search_hotels", args, {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      },
     }),
   };
 }
