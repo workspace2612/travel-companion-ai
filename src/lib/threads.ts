@@ -98,8 +98,9 @@ export function appendMessage(threadId: string, msg: ChatMessage) {
         ? msg.content.slice(0, 60)
         : t.title,
   };
-  threads[idx] = updated;
-  write(threads);
+  const next = threads.slice();
+  next[idx] = updated;
+  write(next);
 }
 
 export function useHydrated() {
