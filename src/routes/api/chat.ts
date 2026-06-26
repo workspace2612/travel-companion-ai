@@ -8,6 +8,12 @@ import {
 } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import {
+  amadeusConfigured,
+  searchFlights,
+  searchFlightsFlex,
+  searchHotels,
+} from "@/lib/amadeus.server";
 
 const SYSTEM = `You are AI Travel Copilot — a friendly, expert travel planner.
 You have tools for destination discovery, budget optimization, itinerary analysis, and full trip generation.
