@@ -183,34 +183,66 @@ Return JSON of shape:
     }),
 
     search_flights: tool({
-      description: "Search real flights between two IATA airports on a given date.",
+      description: "Search real flights between two IATA airports on a given date (Amadeus).",
       inputSchema: z.object({
         origin_iata: z.string(),
         destination_iata: z.string(),
         date: z.string(),
+        adults: z.number().int().default(1),
       }),
-      execute: async (args) => record("search_flights", args, NOT_CONFIGURED),
+      execute: async (args) => {
+        if (!amadeusConfigured()) return record("search_flights", args, NOT_CONFIGURED);
+        try {
+          const result = await searchFlights(args);
+          return record("search_flights", args, result);
+        } catch (e) {
+          return record("search_flights", args, {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      },
     }),
 
     search_flights_flex: tool({
-      description: "Find the cheapest day to fly within a flex window around a target date.",
+      description: "Find the cheapest day to fly within a flex window around a target date (Amadeus).",
       inputSchema: z.object({
         origin_iata: z.string(),
         destination_iata: z.string(),
         date: z.string(),
         flex_days: z.number().int().default(3),
       }),
-      execute: async (args) => record("search_flights_flex", args, NOT_CONFIGURED),
+      execute: async (args) => {
+        if (!amadeusConfigured()) return record("search_flights_flex", args, NOT_CONFIGURED);
+        try {
+          const result = await searchFlightsFlex(args);
+          return record("search_flights_flex", args, result);
+        } catch (e) {
+          return record("search_flights_flex", args, {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      },
     }),
 
     search_hotels: tool({
-      description: "Search hotels for an IATA city code between check-in and check-out.",
+      description: "Search hotels for an IATA city code between check-in and check-out (Amadeus).",
       inputSchema: z.object({
         city_code: z.string(),
         check_in: z.string(),
         check_out: z.string(),
+        adults: z.number().int().default(1),
       }),
-      execute: async (args) => record("search_hotels", args, NOT_CONFIGURED),
+      execute: async (args) => {
+        if (!amadeusConfigured()) return record("search_hotels", args, NOT_CONFIGURED);
+        try {
+          const result = await searchHotels(args);
+          return record("search_hotels", args, result);
+        } catch (e) {
+          return record("search_hotels", args, {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      },
     }),
   };
 }
