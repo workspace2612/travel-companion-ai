@@ -14,14 +14,20 @@ import {
   searchFlightsFlex,
   searchHotels,
 } from "@/lib/amadeus.server";
+import { webSearch, readPage } from "@/lib/web-search.server";
 
-const SYSTEM = `You are AI Travel Copilot — a friendly, expert travel planner.
-You have tools for destination discovery, budget optimization, itinerary analysis, and full trip generation.
-Use a tool whenever the user's request maps to one; otherwise answer conversationally.
-After a tool returns, summarize the result for the user in a clear, well-formatted markdown reply.
-Currency defaults to INR; origin defaults to the user's city if they mention one.
-Ask brief follow-ups when key inputs are missing.
-PDF/URL scraping for PDFs is temporarily unavailable — tell the user politely if they upload a PDF.`;
+const SYSTEM = `You are AI Travel Copilot — a friendly, knowledgeable assistant.
+Primary focus: travel (destinations, flights, hotels, itineraries, budgets), but you can also answer general questions using your knowledge and the web_search / read_url tools.
+
+Rules:
+- Use a tool whenever the user's request maps to one.
+- For fresh facts, prices, opening hours, news, weather, events, visa rules, or anything the user asks about the current internet — call web_search first, then optionally read_url on the best links.
+- For any destination worldwide (even obscure), attempt discover_destinations / generate_trip; if you lack knowledge, use web_search to gather facts first, then respond.
+- If a flight/hotel tool returns "not configured", tell the user real-time flight/hotel data needs Amadeus keys, then still give useful estimates from your knowledge.
+- Always answer — never refuse for lack of tools. Fall back to your own knowledge + web_search.
+- After a tool returns, summarize clearly in markdown with headings, bullets, and links when relevant.
+- Currency defaults to INR unless the user specifies otherwise. Ask brief follow-ups only when a critical input is missing.
+- PDF upload isn't wired yet — if a user uploads a PDF, ask them to paste text or a URL.`;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -76,6 +82,44 @@ function makeTools(model: ReturnType<ReturnType<typeof createLovableAiGatewayPro
   };
 
   return {
+    web_search: tool({
+      description:
+        "Search the live web for fresh info (news, prices, hours, weather, events, visas, any factual question). Returns a list of {title,url,snippet}.",
+      inputSchema: z.object({
+        query: z.string(),
+        max_results: z.number().int().default(5),
+      }),
+      execute: async (args) => {
+        try {
+          const results = await webSearch(args.query, args.max_results ?? 5);
+          return record("web_search", args, { query: args.query, results });
+        } catch (e) {
+          return record("web_search", args, {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      },
+    }),
+
+    read_url: tool({
+      description:
+        "Fetch a URL and return its readable text content (markdown). Use to read pages found by web_search.",
+      inputSchema: z.object({
+        url: z.string(),
+        max_chars: z.number().int().default(6000),
+      }),
+      execute: async (args) => {
+        try {
+          const content = await readPage(args.url, args.max_chars ?? 6000);
+          return record("read_url", args, { url: args.url, content });
+        } catch (e) {
+          return record("read_url", args, {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      },
+    }),
+
     discover_destinations: tool({
       description:
         "Suggest destinations matching interests, budget, duration and origin. Returns a list of destination ideas with rationale.",
