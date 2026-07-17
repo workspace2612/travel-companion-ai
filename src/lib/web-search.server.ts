@@ -39,7 +39,7 @@ export async function webSearch(query: string, max = 5): Promise<WebResult[]> {
   }
   // DuckDuckGo HTML — keyless
   const r = await fetch(
-    `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+    `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
     {
       headers: {
         "User-Agent":
@@ -48,22 +48,34 @@ export async function webSearch(query: string, max = 5): Promise<WebResult[]> {
     },
   );
   const html = await r.text();
-  const results: WebResult[] = [];
-  const re =
-    /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+  const strip = (s: string) =>
+    s
+      .replace(/<[^>]+>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/&#x27;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/\s+/g, " ")
+      .trim();
+  const links: Array<{ url: string; title: string }> = [];
+  const linkRe =
+    /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) && results.length < max) {
+  while ((m = linkRe.exec(html))) {
     let url = m[1];
-    // DDG wraps URLs like /l/?uddg=<encoded>
-    const uddg = url.match(/uddg=([^&]+)/);
+    if (url.startsWith("//")) url = "https:" + url;
+    const uddg = url.match(/[?&]uddg=([^&]+)/);
     if (uddg) url = decodeURIComponent(uddg[1]);
-    const strip = (s: string) =>
-      s.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-    results.push({
-      url,
-      title: strip(m[2]),
-      snippet: strip(m[3]),
-    });
+    links.push({ url, title: strip(m[2]) });
+  }
+  const snips: string[] = [];
+  const snipRe =
+    /class="result__snippet"[^>]*>([\s\S]*?)<\/(?:a|div)>/g;
+  while ((m = snipRe.exec(html))) snips.push(strip(m[1]));
+  const results: WebResult[] = [];
+  for (let i = 0; i < links.length && results.length < max; i++) {
+    results.push({ url: links[i].url, title: links[i].title, snippet: snips[i] ?? "" });
   }
   return results;
 }
