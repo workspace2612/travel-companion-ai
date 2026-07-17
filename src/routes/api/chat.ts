@@ -82,6 +82,44 @@ function makeTools(model: ReturnType<ReturnType<typeof createLovableAiGatewayPro
   };
 
   return {
+    web_search: tool({
+      description:
+        "Search the live web for fresh info (news, prices, hours, weather, events, visas, any factual question). Returns a list of {title,url,snippet}.",
+      inputSchema: z.object({
+        query: z.string(),
+        max_results: z.number().int().default(5),
+      }),
+      execute: async (args) => {
+        try {
+          const results = await webSearch(args.query, args.max_results ?? 5);
+          return record("web_search", args, { query: args.query, results });
+        } catch (e) {
+          return record("web_search", args, {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      },
+    }),
+
+    read_url: tool({
+      description:
+        "Fetch a URL and return its readable text content (markdown). Use to read pages found by web_search.",
+      inputSchema: z.object({
+        url: z.string(),
+        max_chars: z.number().int().default(6000),
+      }),
+      execute: async (args) => {
+        try {
+          const content = await readPage(args.url, args.max_chars ?? 6000);
+          return record("read_url", args, { url: args.url, content });
+        } catch (e) {
+          return record("read_url", args, {
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      },
+    }),
+
     discover_destinations: tool({
       description:
         "Suggest destinations matching interests, budget, duration and origin. Returns a list of destination ideas with rationale.",
